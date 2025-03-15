@@ -1,7 +1,7 @@
 name: soft_hyphen_text
-description: "A new Flutter package project."
+description: "A Flutter package for wrapping text with soft hyphens."
 version: 0.0.1
-homepage:
+repository: https://github.com/domfz/soft_hyphen_text
 
 environment:
   sdk: ">=3.4.3 <4.0.0"
