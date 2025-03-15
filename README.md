@@ -23,7 +23,7 @@ This widget can be used like the text widget but takes care of soft hyphens insi
 - Automatically adds visible hyphens when text wraps at a soft hyphen position
 - Preserves original text when no wrapping occurs
 
-<img src="screenshot.png" alt="Screenshot of SoftHyphenText in action" width="50%"/>
+<img src="doc/screenshot.png" alt="Screenshot of SoftHyphenText in action" width="50%"/>
 
 ## Getting started
 
