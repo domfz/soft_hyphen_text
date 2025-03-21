@@ -1,4 +1,4 @@
-## 0.0.3
+## 0.1.0
 
 Fix bug where words sometimes preferred to wrap at soft hyphen positions even though they had enough space
 
