@@ -133,6 +133,19 @@ class _SoftHyphenTextPainter extends StatelessWidget {
     int startPos = 0;
 
     while (startPos < plainText.length) {
+      // First, check if all remaining text fits on one line
+      textPainter.text = TextSpan(
+        text: plainText.substring(startPos),
+        style: style,
+      );
+      textPainter.layout(maxWidth: maxWidth);
+
+      if (!textPainter.didExceedMaxLines && textPainter.width <= maxWidth) {
+        // All remaining text fits, no need to wrap
+        result.write(plainText.substring(startPos));
+        break;
+      }
+
       // Find the maximum amount of text that fits on one line
       int endPos = _findMaxFittingPosition(plainText, startPos, textPainter);
 
@@ -141,18 +154,69 @@ class _SoftHyphenTextPainter extends StatelessWidget {
         endPos = startPos + 1;
       }
 
-      // Check if there's a soft hyphen before the break point
-      int hyphenPos = _findLastSoftHyphenBefore(endPos, softHyphenMap);
+      // Try to find a space or word boundary before the break point
+      int spacePos = _findLastSpaceBefore(plainText, endPos);
 
-      if (hyphenPos > startPos) {
-        // We found a soft hyphen position to break at
-        result.write(plainText.substring(startPos, hyphenPos));
-        result.write(SoftHyphenText.visibleHyphen);
-        startPos = hyphenPos;
+      // Check if we're in the middle of a word and need to use a soft hyphen
+      if (spacePos <= startPos) {
+        // No space was found or it's before our current position
+        // Check if we can fit the entire word up to the next space
+        int nextSpace = _findNextSpaceBefore(plainText, startPos, plainText.length);
+        bool wordFits = false;
+
+        if (nextSpace > startPos) {
+          // Try to fit the whole word
+          textPainter.text = TextSpan(
+            text: plainText.substring(startPos, nextSpace),
+            style: style,
+          );
+          textPainter.layout(maxWidth: maxWidth);
+          wordFits = !textPainter.didExceedMaxLines && textPainter.width <= maxWidth;
+        }
+
+        if (!wordFits) {
+          // Word doesn't fit, check for soft hyphen
+          int hyphenPos = _findLastSoftHyphenBefore(endPos, softHyphenMap);
+
+          if (hyphenPos > startPos) {
+            // We found a soft hyphen position to break at
+            result.write(plainText.substring(startPos, hyphenPos));
+            result.write(SoftHyphenText.visibleHyphen);
+            startPos = hyphenPos;
+          } else {
+            // No soft hyphen found, just break at the max fitting position
+            result.write(plainText.substring(startPos, endPos));
+            startPos = endPos;
+          }
+        } else {
+          // Word fits entirely, include it
+          result.write(plainText.substring(startPos, nextSpace));
+          startPos = nextSpace;
+        }
       } else {
-        // No soft hyphen found, just break at the max fitting position
-        result.write(plainText.substring(startPos, endPos));
-        startPos = endPos;
+        // We found a space
+        // Check if the text after the space through the next space also fits
+        int nextSpace = _findNextSpaceBefore(plainText, spacePos + 1, plainText.length);
+        bool nextWordFits = false;
+
+        if (nextSpace > spacePos + 1) {
+          textPainter.text = TextSpan(
+            text: plainText.substring(startPos, nextSpace),
+            style: style,
+          );
+          textPainter.layout(maxWidth: maxWidth);
+          nextWordFits = !textPainter.didExceedMaxLines && textPainter.width <= maxWidth;
+        }
+
+        if (nextWordFits) {
+          // Next word also fits, include it
+          result.write(plainText.substring(startPos, nextSpace));
+          startPos = nextSpace;
+        } else {
+          // Break at space
+          result.write(plainText.substring(startPos, spacePos));
+          startPos = spacePos + 1; // Skip the space on the next line
+        }
       }
 
       // Add a newline if we're not at the end
@@ -188,6 +252,15 @@ class _SoftHyphenTextPainter extends StatelessWidget {
     return low;
   }
 
+  int _findLastSpaceBefore(String text, int position) {
+    for (int i = position - 1; i >= 0; i--) {
+      if (text[i] == ' ') {
+        return i;
+      }
+    }
+    return -1;
+  }
+
   int _findLastSoftHyphenBefore(int position, Map<int, bool> softHyphenMap) {
     for (int i = position - 1; i >= 0; i--) {
       if (softHyphenMap.containsKey(i) && softHyphenMap[i]!) {
@@ -195,5 +268,14 @@ class _SoftHyphenTextPainter extends StatelessWidget {
       }
     }
     return -1;
+  }
+
+  int _findNextSpaceBefore(String text, int startPos, int maxPos) {
+    for (int i = startPos; i < maxPos; i++) {
+      if (text[i] == ' ') {
+        return i;
+      }
+    }
+    return maxPos;
   }
 }
